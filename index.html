@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VerGate - does this version match that range?</title>
+<meta name="description" content="Semver range checker: paste a range like ^1.2.3 and a list of versions, see what matches and why. Checked against npm semver.">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#15121f; color:#f3ede6; line-height:1.6; }
+  .wrap { max-width:680px; margin:0 auto; padding:48px 20px 60px; }
+  .logo { font-size:46px; font-weight:800; } .logo span { color:#c4b5fd; }
+  .tag { font-size:19px; margin-top:10px; color:#ded5ca; }
+  .cta { display:inline-block; margin-top:26px; background:#c4b5fd; color:#15121f; font-weight:700; padding:14px 30px; border-radius:12px; text-decoration:none; }
+  h2 { font-size:21px; margin:40px 0 10px; } li { color:#b9aea1; margin-bottom:8px; } ul { margin-left:20px; }
+  .demo { margin-top:26px; background:#241d38; border-radius:14px; padding:18px; } .demo b { color:#c4b5fd; }
+  footer { margin-top:50px; font-size:13px; color:#8c8174; } a { color:#c4b5fd; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Ver<span>Gate</span></div>
+  <div class="tag">Will ^0.2.3 let 0.3.0 in? Check before you update.</div>
+  <a class="cta" href="app.html">Open the app</a>
+  <div class="demo"><b>^1.2.3</b> means &gt;=1.2.3 &lt;2.0.0: 1.9.9 gets in, 2.0.0 does not, and <b>1.3.0-beta.1</b> is skipped because pre-releases need to be named.</div>
+  <h2>What it does</h2>
+  <ul><li>Caret, tilde, x-ranges, hyphen ranges, comparators and || alternatives</li><li>Per-version verdict with the reason, including the pre-release rule</li><li>Sorts by semver precedence and suggests patch, minor and major bumps</li><li>Checked against 1,313 results from npm semver 7.8.5</li></ul>
+  <footer>npm range semantics; Cargo, pip and Maven differ. Static, client-side, nothing stored. <a href="https://github.com/iLanis-agent/vergate">Source</a></footer>
+</div>
+</body>
+</html>
