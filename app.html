@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VerGate - does this version match that range?</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#15121f; color:#f3ede6; line-height:1.5; }
+  .wrap { max-width:700px; margin:0 auto; padding:26px 16px 50px; }
+  h1 { font-size:28px; } h1 span { color:#c4b5fd; }
+  .sub { color:#b5aa9c; margin:6px 0 16px; }
+  .card { background:#241d38; border-radius:14px; padding:14px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  label { font-size:12px; color:#b5aa9c; display:block; margin-bottom:3px; }
+  input,select { width:100%; background:#15121f; color:#f3ede6; border:1px solid #574f48; border-radius:8px; padding:8px; font-size:15px; font-family:inherit; }
+  button { background:#4c3a8a; color:#f3ede6; border:0; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; margin-right:6px; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; } td,th { text-align:left; padding:8px 4px; border-bottom:1px solid #433c36; } th { font-size:12px; color:#b5aa9c; font-weight:600; }
+  td.v { font-size:22px; font-weight:800; color:#c4b5fd; } tr.me td.v { color:#f3ede6; }
+  .stats { display:flex; gap:22px; flex-wrap:wrap; margin-top:12px; } .stats b { display:block; font-size:20px; } .muted { color:#b5aa9c; font-size:13px; }
+  .err { color:#ff9c8a; } .note { font-size:12.5px; color:#8c8174; margin-top:6px; }
+
+  td.v { font-size:17px; } td, th { font-size:14px; } .bar { height:10px; background:#15121f; border-radius:6px; overflow:hidden; margin-top:6px; } .bar i { display:block; height:100%; background:#c4b5fd; } .bar i.over { background:#ff7b72; } .no { color:#ff9c8a; }
+  .cb { display:inline-flex; align-items:center; gap:4px; margin-right:12px; font-size:14px; color:#f3ede6; } .cb input { width:auto; } .big { font-family:monospace; font-size:26px; font-weight:800; color:#c4b5fd; } td.v.m { font-family:monospace; }
+  textarea { width:100%; background:#15121f; color:#f3ede6; border:1px solid #574f48; border-radius:8px; padding:8px; font-size:14px; font-family:monospace; min-height:110px; } .ok { color:#86efac; font-weight:700; } .no { color:#ff9c8a; } td.m { font-family:monospace; } .chip { display:inline-block; font-family:monospace; background:#15121f; border-radius:6px; padding:2px 6px; margin:2px 4px 2px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ver<span>Gate</span></h1>
+  <div class="sub">Type an npm-style version range and a list of versions. See which ones get through, and why the others do not.</div>
+  <div class="card">
+    <label>Range (^1.2.3, ~1.2, 1.x, &gt;=1.0.0 &lt;2.0.0, 1.2 - 1.4, a || b)</label>
+    <input id="range" value="^1.2.3" style="font-family:monospace">
+    <button id="p1">^1.2.3</button><button id="p2">^0.2.3</button><button id="p3">~1.2.3</button><button id="p4">1.x</button><button id="p5">&gt;=1.2.3 &lt;1.4.0 || ^3.0.0</button><button id="p6">^1.2.3-beta.2</button>
+    <div id="exp" class="muted" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <label>Versions (one per line or comma separated)</label>
+    <textarea id="vers">1.2.2
+1.2.3
+1.2.4
+1.3.0-beta.1
+1.10.0
+2.0.0
+2.0.0-rc.1
+1.2.3-beta.2
+v1.5
+</textarea>
+    <div id="out" style="margin-top:10px"></div>
+    <div id="best" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2 style="margin:0 0 8px;font-size:15px">Sort by precedence and bump</h2>
+    <div id="sorted" class="muted"></div>
+    <div id="bumps" style="margin-top:8px"></div>
+  </div>
+  <div class="note">Follows the semver.org 2.0.0 precedence rules (numeric parts compared as numbers, a pre-release sorts below its release, numeric identifiers sort below alphanumeric ones, build metadata ignored) and the range grammar of npm's semver package. Fixtures (1313 checks) were produced by running npm semver 7.8.5 over 44 ranges and 28 versions. The pre-release rule matches npm: a pre-release like 1.3.0-beta.1 only satisfies a range if one comparator in that same part of the range names a pre-release on the same major.minor.patch. The expanded form shows npm's normalisation, where an upper bound such as &lt;2.0.0-0 means "below any 2.0.0 pre-release". Other ecosystems (Cargo, pip, Maven, Composer) use different range rules. Strict versions only: 1.2 and 01.2.3 are not valid semver, and a leading v is accepted. Runs in your browser, nothing stored.</div>
+</div>
+<script src="engine.js"></script>
+<script>
+(function () {
+  var G = window.VerGate, $ = function (i) { return document.getElementById(i); };
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function run() {
+    var range = $('range').value, pr = G.parseRange(range);
+    if (pr.error) { $('exp').innerHTML = '<span class="no">' + esc(pr.error) + '</span>'; $('out').innerHTML = ''; $('best').innerHTML = ''; $('sorted').innerHTML = ''; $('bumps').innerHTML = ''; return; }
+    var ex = G.explain(range);
+    $('exp').innerHTML = 'Means: ' + ex.map(function (e) { return '<span class="chip">' + esc(e) + '</span>'; }).join(' or ');
+    var items = $('vers').value.split(/[\s,]+/).filter(Boolean), rows = '', good = [], valid = [];
+    items.forEach(function (s) {
+      var v = G.parse(s);
+      if (!v) { rows += '<tr><td class="m">' + esc(s) + '</td><td class="no">invalid</td><td class="muted">not a strict semver (needs major.minor.patch, no leading zeros)</td></tr>'; return; }
+      valid.push(v);
+      var r = G.satisfies(v, pr);
+      if (r.ok) { good.push(v); rows += '<tr><td class="m">' + esc(G.str(v)) + '</td><td class="ok">matches</td><td></td></tr>'; }
+      else {
+        var why = G.satisfies(v, pr, true).ok ? 'inside the numbers, but pre-releases are skipped unless the range names a pre-release of the same x.y.z' : 'outside the range';
+        rows += '<tr><td class="m">' + esc(G.str(v)) + '</td><td class="no">no</td><td class="muted">' + why + '</td></tr>';
+      }
+    });
+    $('out').innerHTML = items.length ? '<table><tr><th>Version</th><th>Result</th><th>Why</th></tr>' + rows + '</table>' : '<div class="muted">Add some versions.</div>';
+    good.sort(G.compare);
+    $('best').innerHTML = good.length ? 'Highest match: <b class="ok">' + G.str(good[good.length - 1]) + '</b> (' + good.length + ' of ' + valid.length + ' valid)' : '<span class="no">No version in the list matches.</span>';
+    var sorted = valid.slice().sort(G.compare);
+    $('sorted').innerHTML = sorted.length ? 'Low to high: ' + sorted.map(function (v) { return '<span class="chip">' + esc(G.str(v)) + '</span>'; }).join('&lt;') : '';
+    var base = good.length ? good[good.length - 1] : sorted.length ? sorted[sorted.length - 1] : null;
+    $('bumps').innerHTML = base ? 'From <b>' + esc(G.str(base)) + '</b>: patch <span class="chip">' + G.str(G.bump(base, 'patch')) + '</span> minor <span class="chip">' + G.str(G.bump(base, 'minor')) + '</span> major <span class="chip">' + G.str(G.bump(base, 'major')) + '</span>' : '';
+  }
+  $('range').oninput = $('vers').oninput = run;
+  [['p1', '^1.2.3'], ['p2', '^0.2.3'], ['p3', '~1.2.3'], ['p4', '1.x'], ['p5', '>=1.2.3 <1.4.0 || ^3.0.0'], ['p6', '^1.2.3-beta.2']].forEach(function (p) { $(p[0]).onclick = function () { $('range').value = p[1]; run(); }; });
+  run();
+})();
+</script>
+</body>
+</html>
